@@ -98,10 +98,10 @@ export default function ClimateNewsFeed() {
                     day_hidden: 'invisible'
                   }}
                   components={{
-                    IconLeft: ({ ...props }) => (
+                    IconLeft: () => (
                       <ChevronLeft className='h-4 w-4 text-green-800 dark:text-green-100' />
                     ),
-                    IconRight: ({ ...props }) => (
+                    IconRight: () => (
                       <ChevronRight className='h-4 w-4 text-green-800 dark:text-green-100' />
                     )
                   }}
