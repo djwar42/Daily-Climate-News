@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { format, subMonths, isBefore } from 'date-fns'
+import { format, subDays, parseISO, isAfter } from 'date-fns'
 
 interface Paper {
   id: string
@@ -22,39 +22,39 @@ interface ApiResponse {
   itemsPerPage: number | null
 }
 
-const LATEST_AVAILABLE_DATE = new Date('2023-08-19')
-
-export default function ClimatePapers({
-  selectedDate
-}: {
-  selectedDate: Date
-}) {
+export default function ClimatePapers() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [latestPaperDate, setLatestPaperDate] = useState<Date | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
   useEffect(() => {
     const fetchPapers = async () => {
       try {
         setLoading(true)
-        const queryDate = isBefore(selectedDate, LATEST_AVAILABLE_DATE)
-          ? selectedDate
-          : LATEST_AVAILABLE_DATE
-        const startDate = format(subMonths(queryDate, 1), 'yyyy-MM-dd')
-        const endDate = format(queryDate, 'yyyy-MM-dd')
-        console.log('Fetching papers for date range:', startDate, 'to', endDate)
+        const startDate = format(selectedDate, 'yyyy-MM-dd')
+        const endDate = format(subDays(selectedDate, 1), 'yyyy-MM-dd')
+        console.log('Fetching papers for date range:', endDate, 'to', startDate)
         const response = await fetch(
-          `/api/fetchPapers?query=climate change&startDate=${startDate}&endDate=${endDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
+          `/api/fetchPapers?query=climate change&startDate=${endDate}&endDate=${startDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
         )
         if (!response.ok) {
           throw new Error('Network response was not ok')
         }
         const data: ApiResponse = await response.json()
-        if (Array.isArray(data.entries)) {
+        if (Array.isArray(data.entries) && data.entries.length > 0) {
           setPapers(data.entries)
+          // Find the most recent publication date
+          const mostRecentDate = data.entries.reduce((latestDate, paper) => {
+            const paperDate = parseISO(paper.published)
+            return isAfter(paperDate, latestDate) ? paperDate : latestDate
+          }, parseISO(data.entries[0].published))
+          setLatestPaperDate(mostRecentDate)
         } else {
-          console.error('Entries is not an array:', data.entries)
+          console.error('No entries found:', data)
           setPapers([])
+          setLatestPaperDate(null)
         }
       } catch (err) {
         setError('Failed to fetch papers')
@@ -69,19 +69,17 @@ export default function ClimatePapers({
   if (loading) return <div>Loading...</div>
   if (error) return <div className='text-red-500'>{error}</div>
 
-  const displayDate = isBefore(selectedDate, LATEST_AVAILABLE_DATE)
-    ? selectedDate
-    : LATEST_AVAILABLE_DATE
-
   return (
     <div>
       <h2 className='text-2xl font-bold mb-4'>
-        Climate Papers since {format(subMonths(displayDate, 1), 'MMMM d, yyyy')}
+        Latest Climate Papers
+        {latestPaperDate &&
+          ` (as of ${format(latestPaperDate, 'MMMM d, yyyy')})`}
       </h2>
-      {isBefore(LATEST_AVAILABLE_DATE, selectedDate) && (
+      {latestPaperDate && isAfter(selectedDate, latestPaperDate) && (
         <p className='text-amber-600 mb-4'>
           Note: The latest available papers are from{' '}
-          {format(LATEST_AVAILABLE_DATE, 'MMMM d, yyyy')}
+          {format(latestPaperDate, 'MMMM d, yyyy')}
         </p>
       )}
       {papers.length > 0 ? (
@@ -101,7 +99,7 @@ export default function ClimatePapers({
                   {paper.title}
                 </h2>
                 <p className='text-sm text-green-600 dark:text-green-300'>
-                  {format(new Date(paper.published), 'MMMM d, yyyy')}
+                  {format(parseISO(paper.published), 'MMMM d, yyyy')}
                 </p>
               </div>
             </CardHeader>
