@@ -1,3 +1,4 @@
+// components/ClimatePapers.tsx
 import React, { useState, useEffect } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -35,8 +36,8 @@ export default function ClimatePapers({
     const fetchPapers = async () => {
       try {
         setLoading(true)
-        const formattedDate = format(selectedDate, 'yyyy-MM')
-        console.log('Fetching papers for date:', formattedDate)
+        const formattedDate = format(selectedDate, 'yyyy-MM-dd')
+        console.log('Fetching papers for date --->', formattedDate)
         const response = await fetch(
           `/api/fetchPapers?query=climate change&date=${formattedDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
         )
@@ -44,7 +45,6 @@ export default function ClimatePapers({
           throw new Error('Network response was not ok')
         }
         const data: ApiResponse = await response.json()
-        console.log('API Response:', data)
         if (Array.isArray(data.entries)) {
           setPapers(data.entries)
         } else {
@@ -61,13 +61,14 @@ export default function ClimatePapers({
     fetchPapers()
   }, [selectedDate])
 
-  console.log('Papers state:', papers)
-
   if (loading) return <div>Loading...</div>
   if (error) return <div className='text-red-500'>{error}</div>
 
   return (
     <div>
+      <h2 className='text-2xl font-bold mb-4'>
+        Climate Papers for {format(selectedDate, 'MMMM d, yyyy')}
+      </h2>
       {papers.length > 0 ? (
         papers.map((paper) => (
           <Card

@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
     }
 
     const responseText = await response.text()
-    console.log('Response data:', responseText)
 
     const parsedData = await new Promise<ArxivResponse>((resolve, reject) => {
       parseString(responseText, (err, result) => {
