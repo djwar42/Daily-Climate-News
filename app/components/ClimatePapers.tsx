@@ -20,7 +20,7 @@ async function fetchPapers(date: Date) {
   const res = await fetch(
     `/api/fetchPapers?query=climate+change&date=${formattedDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`,
     {
-      next: { revalidate: 3600 } // Revalidate every hour
+      next: { revalidate: 3600 } // cache every hour
     }
   )
 
