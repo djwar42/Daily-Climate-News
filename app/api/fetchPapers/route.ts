@@ -35,12 +35,11 @@ interface Paper {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('query') || 'electron'
-  const start = parseInt(searchParams.get('start') || '0', 10)
   const maxResults = parseInt(searchParams.get('max_results') || '10', 10)
 
   try {
     const response = await fetch(
-      `${API_ENDPOINT}?search_query=all:${query}&start=${start}&max_results=${maxResults}`
+      `${API_ENDPOINT}?search_query=all:${query}&start=0&max_results=${maxResults}`
     )
 
     if (!response.ok) {

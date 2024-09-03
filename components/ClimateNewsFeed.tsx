@@ -30,7 +30,7 @@ export default function ClimateNewsFeed() {
             <ClimatePapers selectedDate={selectedDate} />
           </div>
           <div>
-            <Card className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
+            {/* <Card className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
               <CardHeader>
                 <h2 className='text-xl font-semibold text-green-800 dark:text-green-100'>
                   Recent Days
@@ -53,8 +53,8 @@ export default function ClimateNewsFeed() {
                   ))}
                 </div>
               </CardContent>
-            </Card>
-            <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
+            </Card> */}
+            {/* <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
               <CardHeader>
                 <h2 className='text-xl font-semibold text-green-800 dark:text-green-100'>
                   Calendar
@@ -107,7 +107,7 @@ export default function ClimateNewsFeed() {
                   }}
                 />
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>
