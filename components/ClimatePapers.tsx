@@ -1,10 +1,9 @@
-// components/ClimatePapers.tsx
 import React, { useState, useEffect } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, subMonths, isBefore } from 'date-fns'
 
 interface Paper {
   id: string
@@ -23,6 +22,8 @@ interface ApiResponse {
   itemsPerPage: number | null
 }
 
+const LATEST_AVAILABLE_DATE = new Date('2023-08-19')
+
 export default function ClimatePapers({
   selectedDate
 }: {
@@ -36,10 +37,14 @@ export default function ClimatePapers({
     const fetchPapers = async () => {
       try {
         setLoading(true)
-        const formattedDate = format(selectedDate, 'yyyy-MM-dd')
-        console.log('Fetching papers for date --->', formattedDate)
+        const queryDate = isBefore(selectedDate, LATEST_AVAILABLE_DATE)
+          ? selectedDate
+          : LATEST_AVAILABLE_DATE
+        const startDate = format(subMonths(queryDate, 1), 'yyyy-MM-dd')
+        const endDate = format(queryDate, 'yyyy-MM-dd')
+        console.log('Fetching papers for date range:', startDate, 'to', endDate)
         const response = await fetch(
-          `/api/fetchPapers?query=climate change&date=${formattedDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
+          `/api/fetchPapers?query=climate change&startDate=${startDate}&endDate=${endDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
         )
         if (!response.ok) {
           throw new Error('Network response was not ok')
@@ -64,11 +69,21 @@ export default function ClimatePapers({
   if (loading) return <div>Loading...</div>
   if (error) return <div className='text-red-500'>{error}</div>
 
+  const displayDate = isBefore(selectedDate, LATEST_AVAILABLE_DATE)
+    ? selectedDate
+    : LATEST_AVAILABLE_DATE
+
   return (
     <div>
       <h2 className='text-2xl font-bold mb-4'>
-        Climate Papers for {format(selectedDate, 'MMMM d, yyyy')}
+        Climate Papers since {format(subMonths(displayDate, 1), 'MMMM d, yyyy')}
       </h2>
+      {isBefore(LATEST_AVAILABLE_DATE, selectedDate) && (
+        <p className='text-amber-600 mb-4'>
+          Note: The latest available papers are from{' '}
+          {format(LATEST_AVAILABLE_DATE, 'MMMM d, yyyy')}
+        </p>
+      )}
       {papers.length > 0 ? (
         papers.map((paper) => (
           <Card
@@ -111,7 +126,7 @@ export default function ClimatePapers({
         <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
           <CardContent className='p-6'>
             <p className='text-center text-green-700 dark:text-green-200'>
-              No papers found for the selected date.
+              No papers found for the selected period.
             </p>
           </CardContent>
         </Card>
