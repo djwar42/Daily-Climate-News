@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
@@ -38,18 +37,18 @@ export default function ClimatePapers({
         setLoading(true)
         const formattedDate = format(selectedDate, 'yyyy-MM')
         console.log('Fetching papers for date:', formattedDate)
-        const response = await axios.get<ApiResponse>('/api/fetchPapers', {
-          params: {
-            query: 'climate change',
-            date: formattedDate,
-            categories: 'physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE'
-          }
-        })
-        console.log('API Response:', response.data)
-        if (Array.isArray(response.data.entries)) {
-          setPapers(response.data.entries)
+        const response = await fetch(
+          `/api/fetchPapers?query=climate change&date=${formattedDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`
+        )
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+        const data: ApiResponse = await response.json()
+        console.log('API Response:', data)
+        if (Array.isArray(data.entries)) {
+          setPapers(data.entries)
         } else {
-          console.error('Entries is not an array:', response.data.entries)
+          console.error('Entries is not an array:', data.entries)
           setPapers([])
         }
       } catch (err) {
