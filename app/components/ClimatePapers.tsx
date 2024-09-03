@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import React from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
@@ -16,57 +15,29 @@ interface Paper {
   categories: string[]
 }
 
-interface ApiResponse {
-  entries: Paper[]
-  totalResults: number | null
-  startIndex: number | null
-  itemsPerPage: number | null
+async function fetchPapers(date: Date) {
+  const formattedDate = format(date, 'yyyy-MM')
+  const res = await fetch(
+    `/api/fetchPapers?query=climate+change&date=${formattedDate}&categories=physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE`,
+    {
+      next: { revalidate: 3600 } // Revalidate every hour
+    }
+  )
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch papers')
+  }
+
+  const data = await res.json()
+  return data.entries as Paper[]
 }
 
-export default function ClimatePapers({
+export default async function ClimatePapers({
   selectedDate
 }: {
   selectedDate: Date
 }) {
-  const [papers, setPapers] = useState<Paper[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchPapers = async () => {
-      try {
-        setLoading(true)
-        const formattedDate = format(selectedDate, 'yyyy-MM')
-        console.log('Fetching papers for date:', formattedDate)
-        const response = await axios.get<ApiResponse>('/api/fetchPapers', {
-          params: {
-            query: 'climate change',
-            date: formattedDate,
-            categories: 'physics.ao-ph,physics.geo-ph,eess.SP,q-bio.PE'
-          }
-        })
-        console.log('API Response:', response.data)
-        if (Array.isArray(response.data.entries)) {
-          console.log('Entries:', response.data.entries)
-          setPapers(response.data.entries)
-        } else {
-          console.error('Entries is not an array:', response.data.entries)
-          setPapers([])
-        }
-      } catch (err) {
-        setError('Failed to fetch papers')
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchPapers()
-  }, [selectedDate])
-
-  console.log('Papers state:', papers)
-
-  if (loading) return <div>Loading...</div>
-  if (error) return <div className='text-red-500'>{error}</div>
+  const papers = await fetchPapers(selectedDate)
 
   return (
     <div>

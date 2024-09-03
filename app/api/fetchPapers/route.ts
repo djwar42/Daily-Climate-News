@@ -1,24 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import axios from 'axios'
 import { parseString } from 'xml2js'
 
 const API_ENDPOINT = 'https://export.arxiv.org/api/query'
 
+interface ArxivEntry {
+  id: string[]
+  title: string[]
+  summary: string[]
+  author: Array<{ name: string[] }>
+  published: string[]
+  link: Array<{ $: { rel: string; href: string } }>
+  category?: Array<{ $: { term: string } }>
+}
+
 interface ArxivResponse {
   feed: {
-    entry: Array<{
-      id: string[]
-      title: string[]
-      summary: string[]
-      author: Array<{ name: string[] }>
-      published: string[]
-      link: Array<{ $: { rel: string; href: string } }>
-      category?: Array<{ $: { term: string } }>
-    }>
+    entry: ArxivEntry[]
     'opensearch:totalResults': string[]
     'opensearch:startIndex': string[]
     'opensearch:itemsPerPage': string[]
   }
+}
+
+interface Paper {
+  id: string
+  title: string
+  summary: string
+  authors: string[]
+  published: string
+  link: string
+  categories: string[]
 }
 
 export async function GET(req: NextRequest) {
@@ -28,52 +39,51 @@ export async function GET(req: NextRequest) {
   const maxResults = parseInt(searchParams.get('max_results') || '10', 10)
 
   try {
-    const response = await axios.get(API_ENDPOINT, {
-      params: {
-        search_query: `all:${query}`,
-        start,
-        max_results: maxResults
-      }
-    })
+    const response = await fetch(
+      `${API_ENDPOINT}?search_query=all:${query}&start=${start}&max_results=${maxResults}`
+    )
 
-    console.log('Response data:', response.data)
+    if (!response.ok) {
+      throw new Error('Failed to fetch from arXiv API')
+    }
+
+    const responseText = await response.text()
+    console.log('Response data:', responseText)
 
     const parsedData = await new Promise<ArxivResponse>((resolve, reject) => {
-      parseString(response.data, (err, result) => {
+      parseString(responseText, (err, result) => {
         if (err) reject(err)
         else resolve(result as ArxivResponse)
       })
     })
 
-    const entries = parsedData.feed.entry
+    const entries: Paper[] = parsedData.feed.entry
       .filter((entry) => {
-        const entryCategories =
-          entry.category?.map((cat: any) => cat.$.term) || []
+        const entryCategories = entry.category?.map((cat) => cat.$.term) || []
         return (
           entryCategories.length === 0 ||
-          entryCategories.some((cat: string) => entryCategories.includes(cat))
+          entryCategories.some((cat) => entryCategories.includes(cat))
         )
       })
-      .map((entry: any) => ({
+      .map((entry) => ({
         id: entry.id[0],
         title: entry.title[0],
         summary: entry.summary[0],
-        authors: entry.author.map((author: any) => author.name[0]),
+        authors: entry.author.map((author) => author.name[0]),
         published: entry.published[0],
-        link: entry.link.find((link: any) => link.$.rel === 'alternate')?.$
-          ?.href,
-        categories: entry.category?.map((cat: any) => cat.$.term) || []
+        link:
+          entry.link.find((link) => link.$.rel === 'alternate')?.$.href || '',
+        categories: entry.category?.map((cat) => cat.$.term) || []
       }))
 
-    // console.log('Filtered entries:', entries.length)
     return NextResponse.json({
       entries,
       totalResults: parseInt(parsedData.feed['opensearch:totalResults'][0], 10),
       startIndex: parseInt(parsedData.feed['opensearch:startIndex'][0], 10),
       itemsPerPage: parseInt(parsedData.feed['opensearch:itemsPerPage'][0], 10)
     })
-  } catch (error: any) {
-    console.error('Error fetching papers:', error.message)
+  } catch (error) {
+    console.error('Error fetching papers:', error)
     return NextResponse.json(
       { error: 'Failed to fetch papers' },
       { status: 500 }
