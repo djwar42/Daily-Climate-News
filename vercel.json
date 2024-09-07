@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/fetch/fetch-arxiv",
+      "path": "/api/fetch-arxiv",
       "schedule": "0 0 * * *"
     }
   ]
