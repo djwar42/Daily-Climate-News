@@ -7,10 +7,15 @@ interface ArxivEntry {
   id: string[]
   title: string[]
   summary: string[]
-  author: Array<{ name: string[] }>
+  author: Array<{ name: string[]; 'arxiv:affiliation'?: string[] }>
   published: string[]
-  link: Array<{ $: { rel: string; href: string } }>
-  category?: Array<{ $: { term: string } }>
+  updated: string[]
+  'arxiv:primary_category': [{ $: { term: string } }]
+  category: Array<{ $: { term: string } }>
+  link: Array<{ $: { rel: string; href: string; type?: string } }>
+  'arxiv:comment'?: string[]
+  'arxiv:journal_ref'?: string[]
+  'arxiv:doi'?: string[]
 }
 
 interface ArxivResponse {
@@ -26,53 +31,94 @@ interface Paper {
   id: string
   title: string
   summary: string
-  authors: string[]
+  authors: Array<{ name: string; affiliation?: string }>
   published: string
-  link: string
+  updated: string
+  primaryCategory: string
   categories: string[]
+  links: { [key: string]: string }
+  comment?: string
+  journalRef?: string
+  doi?: string
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const query = searchParams.get('query') || 'electron'
-  const maxResults = parseInt(searchParams.get('max_results') || '10', 10)
+  const query = searchParams.get('query') || 'climate+change'
+  console.log('Query:', query)
+  const start = parseInt(searchParams.get('start') || '0', 10)
+  const maxResults = Math.min(
+    parseInt(searchParams.get('max_results') || '10', 10),
+    2000
+  )
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
+
+  const categories =
+    'cat:physics.ao-ph OR cat:physics.geo-ph OR cat:eess.SP OR cat:q-bio.PE'
+  const dateQuery = null
+  //startDate && endDate ? `submittedDate:[${startDate} TO ${endDate}]` : ''
+  const searchQuery = `${categories}${dateQuery ? ' AND ' + dateQuery : ''}${
+    query ? ' AND ' + query : ''
+  }`
 
   try {
-    const response = await fetch(
-      `${API_ENDPOINT}?search_query=all:${query}&start=0&max_results=${maxResults}`
-    )
+    const url = new URL(API_ENDPOINT)
+    url.searchParams.append('search_query', searchQuery)
+    url.searchParams.append('start', start.toString())
+    url.searchParams.append('max_results', maxResults.toString())
+    url.searchParams.append('sortBy', 'submittedDate')
+    url.searchParams.append('sortOrder', 'descending')
+
+    console.log('Fetching from:', url.toString())
+    const response = await fetch(url)
 
     if (!response.ok) {
-      throw new Error('Failed to fetch from arXiv API')
+      throw new Error(`ArXiv API responded with status: ${response.status}`)
     }
 
     const responseText = await response.text()
-
-    const parsedData = await new Promise<ArxivResponse>((resolve, reject) => {
+    const parsedData: ArxivResponse = await new Promise((resolve, reject) => {
       parseString(responseText, (err, result) => {
         if (err) reject(err)
         else resolve(result as ArxivResponse)
       })
     })
 
-    const entries: Paper[] = parsedData.feed.entry
-      .filter((entry) => {
-        const entryCategories = entry.category?.map((cat) => cat.$.term) || []
-        return (
-          entryCategories.length === 0 ||
-          entryCategories.some((cat) => entryCategories.includes(cat))
-        )
+    if (!parsedData.feed || !parsedData.feed.entry) {
+      return NextResponse.json({
+        entries: [],
+        totalResults: 0,
+        startIndex: 0,
+        itemsPerPage: 0
       })
-      .map((entry) => ({
-        id: entry.id[0],
-        title: entry.title[0],
-        summary: entry.summary[0],
-        authors: entry.author.map((author) => author.name[0]),
-        published: entry.published[0],
-        link:
-          entry.link.find((link) => link.$.rel === 'alternate')?.$.href || '',
-        categories: entry.category?.map((cat) => cat.$.term) || []
-      }))
+    }
+
+    const entries: Paper[] = parsedData.feed.entry.map((entry) => ({
+      id: entry.id[0],
+      title: entry.title[0],
+      summary: entry.summary[0],
+      authors: entry.author.map((author) => ({
+        name: author.name[0],
+        affiliation: author['arxiv:affiliation']?.[0]
+      })),
+      published: entry.published[0],
+      updated: entry.updated[0],
+      primaryCategory: entry['arxiv:primary_category'][0].$.term,
+      categories: entry.category.map((cat) => cat.$.term),
+      links: entry.link.reduce((acc, link) => {
+        acc[link.$.rel] = link.$.href
+        return acc
+      }, {} as { [key: string]: string }),
+      comment: entry['arxiv:comment']?.[0],
+      journalRef: entry['arxiv:journal_ref']?.[0],
+      doi: entry['arxiv:doi']?.[0]
+    }))
+
+    console.log(
+      'Paper titles:',
+      entries.map((entry) => entry.title)
+    )
 
     return NextResponse.json({
       entries,
@@ -83,7 +129,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching papers:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch papers' },
+      { error: 'Failed to fetch papers', details: (error as Error).message },
       { status: 500 }
     )
   }
