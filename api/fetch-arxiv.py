@@ -19,7 +19,7 @@ except Exception as e:
 def fetch_and_store_climate_papers():
     search = arxiv.Search(
         query="climate",
-        max_results=100,
+        max_results=10,
         sort_by=arxiv.SortCriterion.SubmittedDate
     )
 
