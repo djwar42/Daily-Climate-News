@@ -6,25 +6,11 @@ import Link from 'next/link'
 import { format, parseISO, isAfter } from 'date-fns'
 
 interface Paper {
-  id: string
   title: string
   summary: string
-  authors: Array<{ name: string; affiliation?: string }>
+  authors: string[]
   published: string
-  updated: string
-  primaryCategory: string
-  categories: string[]
-  links: { [key: string]: string }
-  comment?: string
-  journalRef?: string
-  doi?: string
-}
-
-interface ApiResponse {
-  entries: Paper[]
-  totalResults: number
-  startIndex: number
-  itemsPerPage: number
+  link: string
 }
 
 export interface ClimatePapersProps {
@@ -41,25 +27,20 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
     const fetchPapers = async () => {
       try {
         setLoading(true)
-        const startDate = format(selectedDate, 'yyyyMMddHHmmss')
-        const endDate = format(selectedDate, 'yyyyMMdd235959')
-        console.log('Fetching papers for date range:', startDate, 'to', endDate)
-        const response = await fetch(
-          `/api/fetchPapers?query=climate change&startDate=${startDate}&endDate=${endDate}`
-        )
+        const dateString = format(selectedDate, 'yyyy-MM-dd')
+        const response = await fetch(`/api/getPapers?date=${dateString}`)
         if (!response.ok) {
           throw new Error(`Network response was not ok: ${response.statusText}`)
         }
-        const data: ApiResponse = await response.json()
-        if (Array.isArray(data.entries) && data.entries.length > 0) {
-          setPapers(data.entries)
-          const mostRecentDate = data.entries.reduce((latestDate, paper) => {
+        const data: Paper[] = await response.json()
+        if (data.length > 0) {
+          setPapers(data)
+          const mostRecentDate = data.reduce((latestDate, paper) => {
             const paperDate = parseISO(paper.published)
             return isAfter(paperDate, latestDate) ? paperDate : latestDate
-          }, parseISO(data.entries[0].published))
+          }, parseISO(data[0].published))
           setLatestPaperDate(mostRecentDate)
         } else {
-          console.log('No entries found:', data)
           setPapers([])
           setLatestPaperDate(null)
         }
@@ -87,13 +68,13 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
       {papers.length > 0 ? (
         papers.map((paper) => (
           <Card
-            key={paper.id}
+            key={paper.link}
             className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'
           >
             <CardHeader className='flex flex-row items-center gap-4'>
               <Avatar>
                 <AvatarFallback className='bg-green-200 text-green-800'>
-                  {paper.authors[0]?.name[0] || 'A'}
+                  {paper.authors[0]?.[0] || 'A'}
                 </AvatarFallback>
               </Avatar>
               <div className='flex flex-col'>
@@ -111,11 +92,7 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
               </p>
             </CardContent>
             <CardFooter>
-              <Link
-                href={paper.links.alternate || ''}
-                target='_blank'
-                rel='noopener noreferrer'
-              >
+              <Link href={paper.link} target='_blank' rel='noopener noreferrer'>
                 <Button
                   variant='outline'
                   className='text-green-700 dark:text-green-200 border-green-300 dark:border-green-600 hover:bg-green-100 dark:hover:bg-green-700'
