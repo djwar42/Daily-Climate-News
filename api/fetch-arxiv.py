@@ -6,14 +6,14 @@ import os
 from time import time
 
 try:
-    from vercel_kv import VercelKV as kv
-    kv_client = kv(os.environ.get('KV_REST_API_URL'), os.environ.get('KV_REST_API_TOKEN'))
-    print("Successfully connected to Vercel KV")
+    from vercel_kv import KV
+    kv_client = KV()
+    print(f"KV client initialized. Has auth: {kv_client.has_auth()}")
 except ImportError:
     print("VercelKV not available. Running in local mode.")
     kv_client = None
 except Exception as e:
-    print(f"Error connecting to Vercel KV: {str(e)}")
+    print(f"Error initializing KV client: {str(e)}")
     kv_client = None
 
 def fetch_and_store_climate_papers():
@@ -36,30 +36,23 @@ def fetch_and_store_climate_papers():
         }
         papers.append(paper)
         
-        if kv_client:
+        if kv_client and kv_client.has_auth():
             try:
-                # Store paper data
                 kv_client.set(f"paper:{result.entry_id}", json.dumps(paper))
-                print(f"Stored paper: {result.entry_id}")
-                
-                # Add to sorted set
                 timestamp = int(result.published.timestamp())
                 kv_client.zadd("climate_papers", {result.entry_id: timestamp})
-                print(f"Added to sorted set: {result.entry_id}")
+                print(f"Stored paper: {result.entry_id}")
             except Exception as e:
                 print(f"Error storing paper {result.entry_id}: {str(e)}")
 
     return papers
 
 def get_latest_papers(count=10):
-    if not kv_client:
+    if not kv_client or not kv_client.has_auth():
         return []
     
     try:
-        # Get the latest paper IDs
         latest_ids = kv_client.zrevrange("climate_papers", 0, count-1)
-        
-        # Fetch paper data for each ID
         papers = []
         for paper_id in latest_ids:
             paper_data = kv_client.get(f"paper:{paper_id}")
@@ -67,7 +60,6 @@ def get_latest_papers(count=10):
                 papers.append(json.loads(paper_data))
             else:
                 print(f"Failed to retrieve paper: {paper_id}")
-        
         return papers
     except Exception as e:
         print(f"Error retrieving latest papers: {str(e)}")
@@ -75,32 +67,36 @@ def get_latest_papers(count=10):
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        papers = fetch_and_store_climate_papers()
-        
-        if kv_client:
-            stored_papers = get_latest_papers()
-            message = f"Fetched {len(papers)} papers and retrieved {len(stored_papers)} from Vercel KV"
-        else:
-            message = f"Fetched {len(papers)} papers about climate change (KV storage not available)"
-        
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        
-        response = {
-            "message": message,
-            "papers": papers if not kv_client else stored_papers
-        }
-        
-        self.wfile.write(json.dumps(response).encode())
-        return
+        try:
+            papers = fetch_and_store_climate_papers()
+            
+            if kv_client and kv_client.has_auth():
+                stored_papers = get_latest_papers()
+                message = f"Fetched {len(papers)} papers and retrieved {len(stored_papers)} from Vercel KV"
+            else:
+                message = f"Fetched {len(papers)} papers about climate change (KV storage not available or not authenticated)"
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            response = {
+                "message": message,
+                "papers": papers if not kv_client or not kv_client.has_auth() else stored_papers,
+                "kv_auth": kv_client.has_auth() if kv_client else False
+            }
+            
+            self.wfile.write(json.dumps(response).encode())
+        except Exception as e:
+            print(f"Error in handler: {str(e)}")
+            self.send_error(500, f"Internal Server Error: {str(e)}")
 
 # For local testing
 if __name__ == "__main__":
     papers = fetch_and_store_climate_papers()
     print(f"\nFetched {len(papers)} papers about climate change")
     
-    if kv_client:
+    if kv_client and kv_client.has_auth():
         print("\nChecking stored data:")
         try:
             stored_papers = kv_client.zrevrange("climate_papers", 0, -1)
@@ -119,4 +115,4 @@ if __name__ == "__main__":
         for paper in latest_papers:
             print(f"- {paper['title']} (Published: {paper['published']})")
     else:
-        print("\nNote: Vercel KV not available. Papers were not stored.")
+        print("\nNote: Vercel KV not available or not authenticated. Papers were not stored.")
