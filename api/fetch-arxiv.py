@@ -50,44 +50,55 @@ class KV:
         url = f'{self.kv_config.rest_api_url}/set/{key}/{value}'
         if opts is not None and opts.ex is not None:
             url = f'{url}/ex/{opts.ex}'
+        print(f"SET Request URL: {url}")
         resp = requests.get(url, headers=headers)
+        print(f"SET Response status: {resp.status_code}")
+        print(f"SET Response content: {resp.text}")
         return resp.json().get('result', False)
 
     def get(self, key) -> Optional[str]:
         headers = {
             'Authorization': f'Bearer {self.kv_config.rest_api_token}',
         }
-        resp = requests.get(f'{self.kv_config.rest_api_url}/get/{key}', headers=headers)
+        url = f'{self.kv_config.rest_api_url}/get/{key}'
+        print(f"GET Request URL: {url}")
+        resp = requests.get(url, headers=headers)
+        print(f"GET Response status: {resp.status_code}")
+        print(f"GET Response content: {resp.text}")
         return resp.json().get('result')
 
     def zadd(self, key, mapping):
-      headers = {
-          'Authorization': f'Bearer {self.kv_config.rest_api_token}',
-          'Content-Type': 'application/json',
-      }
-      url = f'{self.kv_config.rest_api_url}/zadd/{key}'
-      
-      # Format the data as expected by Upstash Redis
-      data = [item for pair in mapping.items() for item in pair]
-      
-      print(f"Attempting to zadd: URL: {url}, Data: {json.dumps(data)}")
-      
-      resp = requests.post(url, headers=headers, json=data)
-      
-      print(f"ZADD Response status: {resp.status_code}")
-      print(f"ZADD Response content: {resp.text}")
-      
-      result = resp.json().get('result', 0)
-      print(f"ZADD Result: {result}")
-      
-      return result
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+            'Content-Type': 'application/json',
+        }
+        url = f'{self.kv_config.rest_api_url}/zadd/{key}'
+        
+        # Format the data as expected by Upstash Redis
+        data = [item for pair in mapping.items() for item in pair]
+        
+        print(f"ZADD Request URL: {url}")
+        print(f"ZADD Request Data: {json.dumps(data)}")
+        
+        resp = requests.post(url, headers=headers, json=data)
+        
+        print(f"ZADD Response status: {resp.status_code}")
+        print(f"ZADD Response content: {resp.text}")
+        
+        result = resp.json().get('result', 0)
+        print(f"ZADD Result: {result}")
+        
+        return result
 
     def zrevrange(self, key, start, stop):
         headers = {
             'Authorization': f'Bearer {self.kv_config.rest_api_token}',
         }
         url = f'{self.kv_config.rest_api_url}/zrevrange/{key}/{start}/{stop}'
+        print(f"ZREVRANGE Request URL: {url}")
         resp = requests.get(url, headers=headers)
+        print(f"ZREVRANGE Response status: {resp.status_code}")
+        print(f"ZREVRANGE Response content: {resp.text}")
         return resp.json().get('result', [])
 
 try:
@@ -119,10 +130,17 @@ def fetch_and_store_climate_papers():
         
         if kv_client and kv_client.has_auth():
             try:
-                kv_client.set(f"paper:{result.entry_id}", json.dumps(paper))
+                set_result = kv_client.set(f"paper:{result.entry_id}", json.dumps(paper))
+                print(f"SET result for paper {result.entry_id}: {set_result}")
+                
                 timestamp = int(result.published.timestamp())
-                kv_client.zadd("climate_papers", {result.entry_id: timestamp})
-                print(f"Stored paper: {result.entry_id}")
+                zadd_result = kv_client.zadd("climate_papers", {result.entry_id: timestamp})
+                print(f"ZADD result for paper {result.entry_id}: {zadd_result}")
+                
+                if zadd_result > 0:
+                    print(f"Successfully stored paper in sorted set: {result.entry_id}")
+                else:
+                    print(f"Failed to store paper in sorted set: {result.entry_id}")
             except Exception as e:
                 print(f"Error storing paper {result.entry_id}: {str(e)}")
 
@@ -134,11 +152,13 @@ def get_latest_papers(count=10):
     
     try:
         latest_ids = kv_client.zrevrange("climate_papers", 0, count-1)
+        print(f"Retrieved {len(latest_ids)} paper IDs from sorted set")
         papers = []
         for paper_id in latest_ids:
             paper_data = kv_client.get(f"paper:{paper_id}")
             if paper_data:
                 papers.append(json.loads(paper_data))
+                print(f"Retrieved paper: {paper_id}")
             else:
                 print(f"Failed to retrieve paper: {paper_id}")
         return papers
