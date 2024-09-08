@@ -4,14 +4,83 @@ import json
 import datetime
 import os
 from time import time
+import requests
+from typing import Optional
+from pydantic import BaseModel
+
+class KVConfig(BaseModel):
+    url: str
+    rest_api_url: str
+    rest_api_token: str
+    rest_api_read_only_token: str
+
+class Opts(BaseModel):
+    ex: Optional[int] = None
+    px: Optional[int] = None
+    exat: Optional[int] = None
+    pxat: Optional[int] = None
+    keepTtl: Optional[bool] = None
+
+class KV:
+    def __init__(self, kv_config: Optional[KVConfig] = None):
+        if kv_config is None:
+            self.kv_config = KVConfig(
+                url=os.getenv("VERCEL_KV_URL"),
+                rest_api_url=os.getenv("VERCEL_KV_REST_API_URL"),
+                rest_api_token=os.getenv("VERCEL_KV_REST_API_TOKEN"),
+                rest_api_read_only_token=os.getenv("VERCEL_KV_REST_API_READ_ONLY_TOKEN"),
+            )
+        else:
+            self.kv_config = kv_config
+
+    def get_kv_conf(self) -> KVConfig:
+        return self.kv_config
+
+    def has_auth(self) -> bool:
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+        }
+        resp = requests.get(self.kv_config.rest_api_url, headers=headers)
+        return resp.status_code != 401
+
+    def set(self, key, value, opts: Optional[Opts] = None) -> bool:
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+        }
+        url = f'{self.kv_config.rest_api_url}/set/{key}/{value}'
+        if opts is not None and opts.ex is not None:
+            url = f'{url}/ex/{opts.ex}'
+        resp = requests.get(url, headers=headers)
+        return resp.json().get('result', False)
+
+    def get(self, key) -> Optional[str]:
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+        }
+        resp = requests.get(f'{self.kv_config.rest_api_url}/get/{key}', headers=headers)
+        return resp.json().get('result')
+
+    def zadd(self, key, mapping):
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+            'Content-Type': 'application/json',
+        }
+        url = f'{self.kv_config.rest_api_url}/zadd/{key}'
+        data = json.dumps(mapping)
+        resp = requests.post(url, headers=headers, data=data)
+        return resp.json().get('result', 0)
+
+    def zrevrange(self, key, start, stop):
+        headers = {
+            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+        }
+        url = f'{self.kv_config.rest_api_url}/zrevrange/{key}/{start}/{stop}'
+        resp = requests.get(url, headers=headers)
+        return resp.json().get('result', [])
 
 try:
-    from vercel_kv import KV
     kv_client = KV()
     print(f"KV client initialized. Has auth: {kv_client.has_auth()}")
-except ImportError:
-    print("VercelKV not available. Running in local mode.")
-    kv_client = None
 except Exception as e:
     print(f"Error initializing KV client: {str(e)}")
     kv_client = None
@@ -74,6 +143,7 @@ class handler(BaseHTTPRequestHandler):
                 stored_papers = get_latest_papers()
                 message = f"Fetched {len(papers)} papers and retrieved {len(stored_papers)} from Vercel KV"
             else:
+                stored_papers = []
                 message = f"Fetched {len(papers)} papers about climate change (KV storage not available or not authenticated)"
             
             self.send_response(200)
@@ -83,7 +153,11 @@ class handler(BaseHTTPRequestHandler):
             response = {
                 "message": message,
                 "papers": papers if not kv_client or not kv_client.has_auth() else stored_papers,
-                "kv_auth": kv_client.has_auth() if kv_client else False
+                "kv_auth": kv_client.has_auth() if kv_client else False,
+                "debug_info": {
+                    "kv_client_available": kv_client is not None,
+                    "kv_client_has_auth": kv_client.has_auth() if kv_client else False
+                }
             }
             
             self.wfile.write(json.dumps(response).encode())
@@ -92,27 +166,14 @@ class handler(BaseHTTPRequestHandler):
             self.send_error(500, f"Internal Server Error: {str(e)}")
 
 # For local testing
-# if __name__ == "__main__":
-#     papers = fetch_and_store_climate_papers()
-#     print(f"\nFetched {len(papers)} papers about climate change")
+if __name__ == "__main__":
+    papers = fetch_and_store_climate_papers()
+    print(f"\nFetched {len(papers)} papers about climate change")
     
-#     if kv_client and kv_client.has_auth():
-#         print("\nChecking stored data:")
-#         try:
-#             stored_papers = kv_client.zrevrange("climate_papers", 0, -1)
-#             print(f"Found {len(stored_papers)} papers in the sorted set")
-#             for paper_id in stored_papers[:5]:  # Check the first 5 papers
-#                 paper_data = kv_client.get(f"paper:{paper_id}")
-#                 if paper_data:
-#                     print(f"Retrieved paper: {paper_id}")
-#                 else:
-#                     print(f"Failed to retrieve paper: {paper_id}")
-#         except Exception as e:
-#             print(f"Error checking stored data: {str(e)}")
-        
-#         print("\nRetrieving latest papers from KV store:")
-#         latest_papers = get_latest_papers()
-#         for paper in latest_papers:
-#             print(f"- {paper['title']} (Published: {paper['published']})")
-#     else:
-#         print("\nNote: Vercel KV not available or not authenticated. Papers were not stored.")
+    if kv_client and kv_client.has_auth():
+        print("\nRetrieving latest papers from KV store:")
+        latest_papers = get_latest_papers()
+        for paper in latest_papers:
+            print(f"- {paper['title']} (Published: {paper['published']})")
+    else:
+        print("\nNote: Vercel KV not available or not authenticated. Papers were not stored.")
