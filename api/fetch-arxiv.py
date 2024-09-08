@@ -68,27 +68,30 @@ class KV:
         return resp.json().get('result')
 
     def zadd(self, key, mapping):
-        headers = {
-            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
-            'Content-Type': 'application/json',
-        }
-        url = f'{self.kv_config.rest_api_url}/zadd/{key}'
-        
-        # Format the data as expected by Upstash Redis
-        data = [item for pair in mapping.items() for item in pair]
-        
-        print(f"ZADD Request URL: {url}")
-        print(f"ZADD Request Data: {json.dumps(data)}")
-        
-        resp = requests.post(url, headers=headers, json=data)
-        
-        print(f"ZADD Response status: {resp.status_code}")
-        print(f"ZADD Response content: {resp.text}")
-        
-        result = resp.json().get('result', 0)
-        print(f"ZADD Result: {result}")
-        
-        return result
+      headers = {
+          'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+          'Content-Type': 'application/json',
+      }
+      url = f'{self.kv_config.rest_api_url}/zadd/{key}'
+      
+      # Prepare the data in the correct format for Redis: [member1, score1, member2, score2]
+      data = []
+      for member, score in mapping.items():
+          data.append({"score": score, "member": member})
+      
+      print(f"ZADD Request URL: {url}")
+      print(f"ZADD Request Data: {json.dumps(data)}")
+      
+      resp = requests.post(url, headers=headers, json={"data": data})
+      
+      print(f"ZADD Response status: {resp.status_code}")
+      print(f"ZADD Response content: {resp.text}")
+      
+      result = resp.json().get('result', 0)
+      print(f"ZADD Result: {result}")
+      
+      return result
+
 
     def zrevrange(self, key, start, stop):
         headers = {
