@@ -67,8 +67,17 @@ class KV:
         }
         url = f'{self.kv_config.rest_api_url}/zadd/{key}'
         data = json.dumps(mapping)
-        resp = requests.post(url, headers=headers, data=data)
-        return resp.json().get('result', 0)
+        print(f"Attempting to zadd: URL: {url}, Data: {data}")  # Log the request details
+        try:
+            resp = requests.post(url, headers=headers, data=data)
+            print(f"ZADD Response status: {resp.status_code}")  # Log the response status
+            print(f"ZADD Response content: {resp.text}")  # Log the full response content
+            result = resp.json().get('result', 0)
+            print(f"ZADD Result: {result}")  # Log the result
+            return result
+        except Exception as e:
+            print(f"Error in ZADD: {str(e)}")  # Log any exceptions
+            return 0
 
     def zrevrange(self, key, start, stop):
         headers = {
