@@ -61,23 +61,26 @@ class KV:
         return resp.json().get('result')
 
     def zadd(self, key, mapping):
-        headers = {
-            'Authorization': f'Bearer {self.kv_config.rest_api_token}',
-            'Content-Type': 'application/json',
-        }
-        url = f'{self.kv_config.rest_api_url}/zadd/{key}'
-        data = json.dumps(mapping)
-        print(f"Attempting to zadd: URL: {url}, Data: {data}")  # Log the request details
-        try:
-            resp = requests.post(url, headers=headers, data=data)
-            print(f"ZADD Response status: {resp.status_code}")  # Log the response status
-            print(f"ZADD Response content: {resp.text}")  # Log the full response content
-            result = resp.json().get('result', 0)
-            print(f"ZADD Result: {result}")  # Log the result
-            return result
-        except Exception as e:
-            print(f"Error in ZADD: {str(e)}")  # Log any exceptions
-            return 0
+      headers = {
+          'Authorization': f'Bearer {self.kv_config.rest_api_token}',
+          'Content-Type': 'application/json',
+      }
+      url = f'{self.kv_config.rest_api_url}/zadd/{key}'
+      
+      # Format the data as expected by Upstash Redis
+      data = [item for pair in mapping.items() for item in pair]
+      
+      print(f"Attempting to zadd: URL: {url}, Data: {json.dumps(data)}")
+      
+      resp = requests.post(url, headers=headers, json=data)
+      
+      print(f"ZADD Response status: {resp.status_code}")
+      print(f"ZADD Response content: {resp.text}")
+      
+      result = resp.json().get('result', 0)
+      print(f"ZADD Result: {result}")
+      
+      return result
 
     def zrevrange(self, key, start, stop):
         headers = {
