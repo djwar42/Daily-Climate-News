@@ -92,27 +92,27 @@ class handler(BaseHTTPRequestHandler):
             self.send_error(500, f"Internal Server Error: {str(e)}")
 
 # For local testing
-if __name__ == "__main__":
-    papers = fetch_and_store_climate_papers()
-    print(f"\nFetched {len(papers)} papers about climate change")
+# if __name__ == "__main__":
+#     papers = fetch_and_store_climate_papers()
+#     print(f"\nFetched {len(papers)} papers about climate change")
     
-    if kv_client and kv_client.has_auth():
-        print("\nChecking stored data:")
-        try:
-            stored_papers = kv_client.zrevrange("climate_papers", 0, -1)
-            print(f"Found {len(stored_papers)} papers in the sorted set")
-            for paper_id in stored_papers[:5]:  # Check the first 5 papers
-                paper_data = kv_client.get(f"paper:{paper_id}")
-                if paper_data:
-                    print(f"Retrieved paper: {paper_id}")
-                else:
-                    print(f"Failed to retrieve paper: {paper_id}")
-        except Exception as e:
-            print(f"Error checking stored data: {str(e)}")
+#     if kv_client and kv_client.has_auth():
+#         print("\nChecking stored data:")
+#         try:
+#             stored_papers = kv_client.zrevrange("climate_papers", 0, -1)
+#             print(f"Found {len(stored_papers)} papers in the sorted set")
+#             for paper_id in stored_papers[:5]:  # Check the first 5 papers
+#                 paper_data = kv_client.get(f"paper:{paper_id}")
+#                 if paper_data:
+#                     print(f"Retrieved paper: {paper_id}")
+#                 else:
+#                     print(f"Failed to retrieve paper: {paper_id}")
+#         except Exception as e:
+#             print(f"Error checking stored data: {str(e)}")
         
-        print("\nRetrieving latest papers from KV store:")
-        latest_papers = get_latest_papers()
-        for paper in latest_papers:
-            print(f"- {paper['title']} (Published: {paper['published']})")
-    else:
-        print("\nNote: Vercel KV not available or not authenticated. Papers were not stored.")
+#         print("\nRetrieving latest papers from KV store:")
+#         latest_papers = get_latest_papers()
+#         for paper in latest_papers:
+#             print(f"- {paper['title']} (Published: {paper['published']})")
+#     else:
+#         print("\nNote: Vercel KV not available or not authenticated. Papers were not stored.")
