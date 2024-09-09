@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 export default function ClimateNewsFeed() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
-  const last4Days = Array.from({ length: 4 }, (_, i) => subDays(new Date(), i))
+  const last4Days = Array.from({ length: 6 }, (_, i) => subDays(new Date(), i))
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
