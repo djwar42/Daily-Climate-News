@@ -1,19 +1,29 @@
+// components/ClimatePapers.tsx
 import React, { useState, useEffect } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { format, parseISO, isAfter } from 'date-fns'
+import { format, subDays, parseISO, isAfter } from 'date-fns'
 
 interface Paper {
+  id: string
   title: string
-  summary: string
   authors: string[]
   published: string
+  summary: string
   link: string
+  categories: string[]
 }
 
-export interface ClimatePapersProps {
+interface ApiResponse {
+  entries: Paper[]
+  totalResults: number | null
+  startIndex: number | null
+  itemsPerPage: number | null
+}
+
+interface ClimatePapersProps {
   selectedDate: Date
 }
 
@@ -21,31 +31,28 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
   const [papers, setPapers] = useState<Paper[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [latestPaperDate, setLatestPaperDate] = useState<Date | null>(null)
 
   useEffect(() => {
     const fetchPapers = async () => {
       try {
         setLoading(true)
-        const dateString = format(selectedDate, 'yyyy-MM-dd')
-        const response = await fetch(`/api/getPapers?date=${dateString}`)
+        const endDate = format(selectedDate, 'yyyy-MM-dd')
+        console.log('Fetching papers for end date:', endDate)
+        const response = await fetch(
+          `/api/fetchPapers?query=climate%20change&endDate=${endDate}`
+        )
         if (!response.ok) {
-          throw new Error(`Network response was not ok: ${response.statusText}`)
+          throw new Error('Network response was not ok')
         }
-        const data: Paper[] = await response.json()
-        if (data.length > 0) {
-          setPapers(data)
-          const mostRecentDate = data.reduce((latestDate, paper) => {
-            const paperDate = parseISO(paper.published)
-            return isAfter(paperDate, latestDate) ? paperDate : latestDate
-          }, parseISO(data[0].published))
-          setLatestPaperDate(mostRecentDate)
+        const data: ApiResponse = await response.json()
+        if (Array.isArray(data.entries) && data.entries.length > 0) {
+          setPapers(data.entries)
         } else {
+          console.error('No entries found:', data)
           setPapers([])
-          setLatestPaperDate(null)
         }
       } catch (err) {
-        setError(`Failed to fetch papers: ${(err as Error).message}`)
+        setError('Failed to fetch papers')
         console.error(err)
       } finally {
         setLoading(false)
@@ -60,15 +67,12 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
   return (
     <div>
       <h2 className='text-2xl font-bold mb-4'>
-        Climate Papers for {format(selectedDate, 'MMMM d, yyyy')}
-        {latestPaperDate &&
-          !isAfter(latestPaperDate, selectedDate) &&
-          ` (Latest paper from ${format(latestPaperDate, 'MMMM d, yyyy')})`}
+        Latest Climate Papers (as of {format(selectedDate, 'MMMM d, yyyy')})
       </h2>
       {papers.length > 0 ? (
         papers.map((paper) => (
           <Card
-            key={paper.link}
+            key={paper.id}
             className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'
           >
             <CardHeader className='flex flex-row items-center gap-4'>
@@ -107,7 +111,7 @@ export default function ClimatePapers({ selectedDate }: ClimatePapersProps) {
         <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
           <CardContent className='p-6'>
             <p className='text-center text-green-700 dark:text-green-200'>
-              No papers found for the selected date.
+              No papers found for the selected period.
             </p>
           </CardContent>
         </Card>
