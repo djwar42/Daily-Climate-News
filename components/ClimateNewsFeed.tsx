@@ -1,5 +1,5 @@
+// components/ClimateNewsFeed.tsx
 'use client'
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Calendar } from '@/components/ui/calendar'
@@ -22,15 +22,18 @@ export default function ClimateNewsFeed() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900 dark:to-emerald-800'>
       <div className='container mx-auto p-4'>
-        <h1 className='text-4xl font-bold mb-6 text-green-800 dark:text-green-100 text-center py-4'>
-          Daily Climate Research
+        <h1 className='text-4xl font-bold mb-1 text-green-800 dark:text-green-100 text-center py-4'>
+          Daily Climate News
         </h1>
+        <h3 className='text-m font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
+          Latest Papers From arXiv
+        </h3>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
           <div className='md:col-span-2'>
             <ClimatePapers selectedDate={selectedDate} />
           </div>
           <div>
-            {/* <Card className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
+            <Card className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
               <CardHeader>
                 <h2 className='text-xl font-semibold text-green-800 dark:text-green-100'>
                   Recent Days
@@ -45,7 +48,7 @@ export default function ClimateNewsFeed() {
                       className={
                         isSameDay(date, selectedDate)
                           ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'text-green-700 border-green-300 hover:bg-green-100 dark:text-green-200 dark:border-green-600 dark:hover:bg-green-700'
+                          : 'bg-green-100 text-green-700 border-green-300 hover:bg-green-300 dark:text-green-200 dark:border-green-600 dark:hover:bg-green-700'
                       }
                     >
                       {format(date, 'MMM d')}
@@ -53,8 +56,8 @@ export default function ClimateNewsFeed() {
                   ))}
                 </div>
               </CardContent>
-            </Card> */}
-            {/* <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
+            </Card>
+            <Card className='bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
               <CardHeader>
                 <h2 className='text-xl font-semibold text-green-800 dark:text-green-100'>
                   Calendar
@@ -107,7 +110,7 @@ export default function ClimateNewsFeed() {
                   }}
                 />
               </CardContent>
-            </Card> */}
+            </Card>
           </div>
         </div>
       </div>

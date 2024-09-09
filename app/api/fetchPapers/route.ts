@@ -1,7 +1,10 @@
+// app/api/fetchPapers/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { parseString } from 'xml2js'
+import { parse, format } from 'date-fns'
 
 const API_ENDPOINT = 'https://export.arxiv.org/api/query'
+const EARLY_START_DATE = '19990101000000' // January 1, 1999 at 00:00:00
 
 interface ArxivEntry {
   id: string[]
@@ -34,12 +37,20 @@ interface Paper {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const query = searchParams.get('query') || 'electron'
+  const query = searchParams.get('query') || 'climate change'
   const maxResults = parseInt(searchParams.get('max_results') || '10', 10)
+  const endDate = searchParams.get('endDate')
+
+  let dateQuery = ''
+  if (endDate) {
+    const endDateTime = parse(endDate, 'yyyy-MM-dd', new Date())
+    const formattedEndDate = format(endDateTime, 'yyyyMMddHHmm')
+    dateQuery = `+AND+submittedDate:[${EARLY_START_DATE}+TO+${formattedEndDate}]`
+  }
 
   try {
     const response = await fetch(
-      `${API_ENDPOINT}?search_query=all:${query}&start=0&max_results=${maxResults}`
+      `${API_ENDPOINT}?search_query=all:"${query}"${dateQuery}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`
     )
 
     if (!response.ok) {
