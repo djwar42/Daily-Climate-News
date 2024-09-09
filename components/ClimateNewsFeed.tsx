@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 export default function ClimateNewsFeed() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
-  const last5Days = Array.from({ length: 5 }, (_, i) => subDays(new Date(), i))
+  const last4Days = Array.from({ length: 4 }, (_, i) => subDays(new Date(), i))
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -28,11 +28,11 @@ export default function ClimateNewsFeed() {
         <h3 className='text-m font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
           Latest Papers From arXiv
         </h3>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-          <div className='md:col-span-2'>
+        <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
+          <div className='md:col-span-3 order-2 md:order-1'>
             <ClimatePapers selectedDate={selectedDate} />
           </div>
-          <div>
+          <div className='order-1 md:order-2'>
             <Card className='mb-4 bg-white/80 dark:bg-green-800/80 backdrop-blur-sm border-green-200 dark:border-green-700'>
               <CardHeader>
                 <h2 className='text-xl font-semibold text-green-800 dark:text-green-100'>
@@ -41,7 +41,7 @@ export default function ClimateNewsFeed() {
               </CardHeader>
               <CardContent>
                 <div className='flex flex-wrap gap-2'>
-                  {last5Days.map((date) => (
+                  {last4Days.map((date) => (
                     <Button
                       key={date.toISOString()}
                       onClick={() => setSelectedDate(date)}
