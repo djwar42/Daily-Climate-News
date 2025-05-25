@@ -25,10 +25,10 @@ export default function ClimateNewsFeed() {
         <h1 className='text-4xl font-bold mb-1 text-green-800 dark:text-green-100 text-center py-4'>
           Daily Climate News
         </h1>
-        <h3 className='text-m font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
+        <h3 className='text-m font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-2'>
           Latest Papers From arXiv
         </h3>
-        <h4>
+        <h4 className='text-sm font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
           Website by
           <a target='_BLANK' href='https://github.com/djwar42'>
             Daniel Joel Warner
