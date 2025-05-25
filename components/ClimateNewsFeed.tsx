@@ -29,7 +29,7 @@ export default function ClimateNewsFeed() {
           Latest Papers From arXiv
         </h3>
         <h4 className='text-sm font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
-          Website by
+          Website by{' '}
           <a target='_BLANK' href='https://github.com/djwar42'>
             Daniel Joel Warner
           </a>
