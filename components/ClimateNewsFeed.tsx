@@ -28,6 +28,13 @@ export default function ClimateNewsFeed() {
         <h3 className='text-m font-bold mb-8 text-green-800 dark:text-green-100 text-center pb-4'>
           Latest Papers From arXiv
         </h3>
+        <h4>
+          Website by
+          <a target='_BLANK' href='https://github.com/djwar42'>
+            Daniel Joel Warner
+          </a>
+        </h4>
+
         <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
           <div className='md:col-span-3 order-2 md:order-1'>
             <ClimatePapers selectedDate={selectedDate} />
